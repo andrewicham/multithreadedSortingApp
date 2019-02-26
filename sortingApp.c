@@ -88,7 +88,7 @@ int partition(int *randArray, int low, int high){
     int i, j;
     i = low - 1;
     for(j = low; j <= high; j++){
-        if(randArray[j] <= pivotPoint){
+        if(randArray[j] < pivotPoint){
             i++;
             swap(randArray, i, j);
         }

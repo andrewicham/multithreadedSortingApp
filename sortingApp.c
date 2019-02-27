@@ -7,22 +7,86 @@
 
 //declaring the randArray dynamically so that a user defined length can be determined
 int* randArray = NULL;
+int* finalArray = NULL;
+int* threadArray[];
 
 //function declarations
-void setArraySize(unsigned int size);
+void setArraySize(unsigned int size, unsigned int t_num);
+void mergeArray(int* Array1, int* Array2, unsigned int arrSize, int* Array3);
+void splitArray(int* randArray, int** threadArray, unsigned int size, unsigned int t_num);
 void populateArray(int* randArray, unsigned int size);
-void printArray(int randArray[], unsigned int size);
+void printArray(int** threadArray, unsigned int size, unsigned int t_num);
 void checkIfSorted(int* randArray, unsigned int size);
-int partition(int* randArray, int low, int high);
-void quickSort(int* randArra, int low, int high);
+void *runner(void* param);
+int partition(int* Array, int low, int high);
+void quickSort(int* Array, int low, int high);
 void swap(int arr[], int a, int b);
 void* quickSortJob(void*);
+void* mergeArrayJob(void* mArgs);
 
 /* Sets randArray to be a user determined size */
-void setArraySize(unsigned int size){
+void setArraySize(unsigned int size, unsigned int t_num){
+    int i;
+    int n = t_num;
+    int index = t_num;
+    unsigned int thread_size;
+
     if(!randArray){
         randArray = malloc(size * sizeof(unsigned int));
     }
+
+    if(!finalArray){
+        finalArray = malloc(size * sizeof(unsigned int));
+    }
+
+    for(i = 0; i < t_num; i++){ //original threads
+	threadArray[i] = malloc(sizeof(unsigned int)*(thread_size));
+    }
+
+    while(n/2 != 1){ //merging threads
+	n = n/2;
+	thread_size = (size / n);
+	for(i = 0; i < n; i++){
+	    threadArray[index] = malloc(sizeof(unsigned int)*(thread_size));
+	    index++;
+	}
+    }
+}
+
+void mergeArray(int* Array1, int* Array2, unsigned int arrSize, int* Array3){
+    int i = 0;
+    int j = 0;
+    int k = 0;
+	
+    while(i < arrSize && j < arrSize){
+	if(Array1[i] < Array2[j]){
+	    Array3[k++] = Array1[i++];
+	}
+	else{
+	    Array3[k++] = Array2[j++];
+	}
+    }
+    while(i < arrSize){
+	Array3[k++] = Array1[i++];
+    }
+    while(j < arrSize){
+	Array3[k++] = Array2[j++];
+    }
+}
+
+void splitArray(int* randArray, int** threadArray, unsigned int size, unsigned int t_num){
+    int i;
+    int j;
+    int k = 0;     
+
+    for(i = 0; i < t_num; i++){ //initialize original threads
+	for(j = 0; j < (size/t_num); j++){
+            threadArray[i][j] = randArray[k];
+	    k++;    	
+	}
+    }
+
+
 }
 
 /*this function will populate randArray with randomly generated numbers using the current time as a seed*/
@@ -36,10 +100,14 @@ void populateArray(int* randArray, unsigned int size){
 }
 
 /*this function is used to test if the array has been sorted properly*/
-void printArray(int* randArray, unsigned int size){
+void printArray(int** threadArray, unsigned int size, unsigned int t_num){
     int i;
-    for(i = 0; i < size; i++){
-        printf("Array index: %d\nArray Value: %d\n\n", i, randArray[i]);
+    int j;
+
+    for(i = 0; i < t_num; i++){
+	for(j = 0; j < (size/t_num); j++){
+	    printf("Array: %d\nArray Value: %d\n\n", i, threadArray[i][j]);    	
+	}
     }
 }
 
@@ -64,98 +132,148 @@ void checkIfSorted(int* randArray, unsigned int size){
     }
 }
 
-/*a struct to hold args for quickSortArgs*/
-struct dummyArgs{
+void *runner(void *param){
+    int i, upper = atoi(param);  
+    
+    pthread_exit(0);
+}
+//a struct to hold args for quickSortArgs
+struct sortingArgs{
 	int* array;
 	int low;
 	int high;
 };
-
-/* the runner function that is passed into pthread_create. for each thread instance, calls quickSort to recursively sort left and 
-right sides of the array */
+struct mergingArgs{
+	int* array1;
+	int* array2;
+	int arraySize;
+	int* array3;
+};
+//the runner function
 void* quickSortJob(void* pArgs){
-	struct dummyArgs* args = pArgs;
+	struct sortingArgs* args = pArgs;
+	printf("The sort thread starts\n");
 	quickSort(args->array, args->low, args->high);
+	printf("The sort thread ends\n");
 	pthread_exit(0);	
 }
-//calls recursively to sort the array in two halves separated at the pIndex
-void quickSort(int *randArray, int low, int high){
+void* mergeArrayJob(void* mArgs){
+	struct mergingArgs* args = mArgs;
+	printf("The merge thread starts\n");
+	mergeArray(args->array1, args->array2, args->arraySize, args->array3);
+	printf("The merge thread ends\n");
+	pthread_exit(0);	
+}
+
+void quickSort(int *Array, int low, int high){
     if(low < high){
-        int pIndex = partition(randArray, low, high);
-        //sorts the "left half" of the array
-        quickSort(randArray, low, pIndex-1);
-        //sorts the "right half"
-        quickSort(randArray, pIndex + 1, high);
+        int pIndex = partition(Array, low, high);
+        quickSort(Array, low, pIndex-1);
+        quickSort(Array, pIndex + 1, high);
     }
 }
-//partitions the array and returns a new pivot point index to be used recursively in quickSort
-int partition(int *randArray, int low, int high){
-    int pivotPoint = randArray[high];
+
+int partition(int *Array, int low, int high){
+    int pivotPoint = Array[high];
     int i, j;
     i = low - 1;
     for(j = low; j <= high-1; j++){
-        if(randArray[j] <= pivotPoint){
+        if(Array[j] <= pivotPoint){
             i++;
-            swap(randArray, i, j);
+            swap(Array, i, j);
         }
     }
-    swap(randArray, (i+1), high);
+    swap(Array, (i+1), high);
     return (i+1);
 }
-//a helper function to swap array values
 void swap(int arr[], int a, int b) {
     int temp;
     temp = arr[b];
     arr[b] = arr[a];
     arr[a] = temp;
+    
 }
 
 int main(int argc, char *argv[])
-{   
-    //unsigned because it sets the size of an array
+{
     unsigned int size = 0;
-    //declaring the two sorting threads
-    pthread_t tid1;
-    pthread_t tid2;
-    //pthread_join always requires a void* argument
-	void* status;
+    unsigned int t_num = 4;//number of threads
+    unsigned int slots = t_num;
+    int m = (t_num/2);
+    void* status;
+    int i;
+    int j = t_num;
+    int k = 0;
+    unsigned int arrSize;
+
+    while(m != 1){ //number of arrays 
+	slots += m;
+	m = m / 2;
+    }
+
+    threadArray[slots];
 
     if(argc != 2){
      fprintf(stderr, "usage: a.out <integer value>\n");
      return -1;
      }
-     //gets the size as a command line argument
-    if((size=atoi(argv[1])) < 0){
-        fprintf(stderr,"%d must be >= 0\n",atoi(argv[1]));
-        return -1;
-    }
-    
-    setArraySize(size);
-    //initializing the array
-    populateArray(randArray, size);
-    //starts the timer after the array initialization
-    clock_t start = clock();
-	
-    //gets the initial pivot point to tell the threads where they should start sorting
-    int pThreadPivot = partition(randArray, 0, size-1);
+     if((size=atoi(argv[1])) < 0){
 
-    /* creates an instance of dummyArgs to be passed into quickSortJob when calling pthread_create */
-	struct dummyArgs pArgs1 = {.array=randArray, .low=0, .high=pThreadPivot-1};
-	struct dummyArgs pArgs2 = {.array=randArray, .low=pThreadPivot+1, .high=size-1};
-	//pthread_create doesn't require any attributes for the sake of this assignment, so NULL
-    pthread_create(&tid1, NULL, quickSortJob, &pArgs1);
-	pthread_create(&tid2, NULL, quickSortJob, &pArgs2);
-	//status can be reused for both instances of pthread_join
-	pthread_join(tid1, &status);
-	pthread_join(tid2, &status);
-    //stops the timer before printing the sorted array to the screen
-    clock_t stop = clock();	
-	printArray(randArray, size);
-    checkIfSorted(randArray, size);
-    printf("Elapsed time: %f seconds\n", (double)(stop - start) / CLOCKS_PER_SEC);
+     fprintf(stderr,"%d must be >= 0\n",atoi(argv[1]));
+     return -1;
+     }
     
     
-    //frees the dynamically allocated memory for randArray
-    free(randArray); 
+    setArraySize(size, t_num);
+    populateArray(randArray, size);
+    splitArray(randArray, threadArray, size, t_num);
+    
+    //checkIfSorted(randArray, size);
+    //printArray(threadArray, size, t_num);
+    
+    pthread_t tidArray1[t_num]; //sorting
+    pthread_t tidArray2[(slots/2)-1]; //merging
+     
+	//pthread_join always requires a void* argument
+     	int pThreadPivot = partition(randArray, 0, size-1);
+
+	for(i = 0; i < t_num; i++){ //create threads for sorting
+	    struct sortingArgs pArgs = {.array=threadArray[i], .low=0, .high=(size/t_num)-1};
+	    pthread_create(&tidArray1[i], NULL, quickSortJob, &pArgs);
+	}
+	for(i = 0; i < t_num; i++){ //join sorting threads
+	    pthread_join(tidArray1[i], &status);
+	}
+
+	for(i = 0; i < slots-2; i++){ //create threads for merging
+	    arrSize = sizeof(threadArray[i]) / sizeof(threadArray[0]);
+	    struct mergingArgs mArgs = {.array1=threadArray[i], 
+	    .array2=threadArray[i++], .arraySize=arrSize ,.array3=threadArray[j]};
+	    pthread_create(&tidArray2[k], NULL, mergeArrayJob, &mArgs);	    
+	    j++;
+	    k++;
+	}
+	for(i = 0; i < (slots/2)-1; i++){ //join merging threads
+	    pthread_join(tidArray2[i], &status);
+	}
+
+	/* this merges the last two sub arrays into the final sorted array */
+	mergeArray(threadArray[slots-2], threadArray[slots-1], size/2, finalArray);
+
+	for(i = 0; i < size; i++){ //prints final array
+	    printf("\n%d", finalArray[i]);
+	}
+
+    	//printArray(threadArray, size, t_num);
+    	//checkIfSorted(randArray, size);
+    //stops clock after threads have completed running
+    //clock_t stop = clock();
+    //printf("Elapsed time: %f seconds\n", (double)(stop - start) / CLOCKS_PER_SEC);
+    free(randArray); //frees the dynamically allocated memory for randArray
+    for(i = 0; i < t_num; i++){
+    	free(threadArray[i]);
+    }
+
     return 0;
 }
+

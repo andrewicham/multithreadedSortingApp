@@ -1,7 +1,7 @@
 all: sortingApp
 
 sortingApp: sortingApp.c
-	gcc sortingApp.c -o sortingApp
+	gcc sortingApp.c -lpthread -o sortingApp
 
 clean:
 	rm -rf sortingApp

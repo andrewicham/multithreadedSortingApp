@@ -6,7 +6,7 @@
 //declaring arrays dynamically so that a user defined length can be determined
 int* randArray = NULL;
 int* finalArray = NULL;
-int** threadArray;
+int** threadArray = NULL;
 
 //function declarations
 void setArraySize(unsigned int size, unsigned int t_num, unsigned int slots);
@@ -246,10 +246,10 @@ int main(int argc, char *argv[])
     /* frees the dynamically allocated memory */
     free(randArray);
     free(finalArray);
-    for(i = 0; i < t_num; i++){
+    for(i = 0; i < slots; i++){
     	free(threadArray[i]);
     }
-
+    free(threadArray);
     return 0;
 }
 

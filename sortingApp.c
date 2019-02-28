@@ -13,10 +13,10 @@ int* threadArray[];
 //function declarations
 void setArraySize(unsigned int size, unsigned int t_num);
 void mergeArray(int* Array1, int* Array2, unsigned int arrSize, int* Array3);
-void splitArray(int* randArray, int** threadArray, unsigned int size, unsigned int t_num);
+void splitArray(unsigned int size, unsigned int t_num);
 void populateArray(int* randArray, unsigned int size);
 void printArray(int** threadArray, unsigned int size, unsigned int t_num);
-void checkIfSorted(int* randArray, unsigned int size);
+void checkIfSorted(int* finalArray, unsigned int size);
 void *runner(void* param);
 int partition(int* Array, int low, int high);
 void quickSort(int* Array, int low, int high);
@@ -29,7 +29,7 @@ void setArraySize(unsigned int size, unsigned int t_num){
     int i;
     int n = t_num;
     int index = t_num;
-    unsigned int thread_size;
+    unsigned int thread_size = (size / t_num);
 
     if(!randArray){
         randArray = malloc(size * sizeof(unsigned int));
@@ -72,20 +72,21 @@ void mergeArray(int* Array1, int* Array2, unsigned int arrSize, int* Array3){
     while(j < arrSize){
 	Array3[k++] = Array2[j++];
     }
+    
 }
 
-void splitArray(int* randArray, int** threadArray, unsigned int size, unsigned int t_num){
+void splitArray(unsigned int size, unsigned int t_num){
+    
     int i;
     int j;
     int k = 0;     
-
+    
     for(i = 0; i < t_num; i++){ //initialize original threads
 	for(j = 0; j < (size/t_num); j++){
             threadArray[i][j] = randArray[k];
 	    k++;    	
 	}
     }
-
 
 }
 
@@ -112,11 +113,11 @@ void printArray(int** threadArray, unsigned int size, unsigned int t_num){
 }
 
 /* This function checks to see if the array is properly sorted */
-void checkIfSorted(int* randArray, unsigned int size){
+void checkIfSorted(int* finalArray, unsigned int size){
     int isSorted;
     int i;
     for(i = 0; i < size-1; i++){
-        if(randArray[i] <= randArray[i+1]){
+        if(finalArray[i] <= finalArray[i+1]){
             isSorted = 1;
         }
         else{
@@ -197,7 +198,7 @@ void swap(int arr[], int a, int b) {
 int main(int argc, char *argv[])
 {
     unsigned int size = 0;
-    unsigned int t_num = 4;//number of threads
+    unsigned int t_num = 2;//number of threads
     unsigned int slots = t_num;
     int m = (t_num/2);
     void* status;
@@ -205,7 +206,6 @@ int main(int argc, char *argv[])
     int j = t_num;
     int k = 0;
     unsigned int arrSize;
-
     while(m != 1){ //number of arrays 
 	slots += m;
 	m = m / 2;
@@ -226,44 +226,45 @@ int main(int argc, char *argv[])
     
     setArraySize(size, t_num);
     populateArray(randArray, size);
-    splitArray(randArray, threadArray, size, t_num);
-    
-    //checkIfSorted(randArray, size);
-    //printArray(threadArray, size, t_num);
+    splitArray(size, t_num);
     
     pthread_t tidArray1[t_num]; //sorting
-    pthread_t tidArray2[(slots/2)-1]; //merging
-     
+    pthread_t tidArray2[(slots/1)-1];
+    
 	//pthread_join always requires a void* argument
      	int pThreadPivot = partition(randArray, 0, size-1);
 
 	for(i = 0; i < t_num; i++){ //create threads for sorting
 	    struct sortingArgs pArgs = {.array=threadArray[i], .low=0, .high=(size/t_num)-1};
 	    pthread_create(&tidArray1[i], NULL, quickSortJob, &pArgs);
-	}
-	for(i = 0; i < t_num; i++){ //join sorting threads
 	    pthread_join(tidArray1[i], &status);
 	}
-
+	//printArray(threadArray, size, t_num);
+	int Q = t_num;
+	int P = t_num/2;
 	for(i = 0; i < slots-2; i++){ //create threads for merging
-	    arrSize = sizeof(threadArray[i]) / sizeof(threadArray[0]);
+	    if(P == 0){
+		Q = Q/2;		
+		P = Q/2;
+	    }
+	    arrSize = size / Q;
 	    struct mergingArgs mArgs = {.array1=threadArray[i], 
-	    .array2=threadArray[i++], .arraySize=arrSize ,.array3=threadArray[j]};
-	    pthread_create(&tidArray2[k], NULL, mergeArrayJob, &mArgs);	    
+	    .array2=threadArray[++i], .arraySize=arrSize ,.array3=threadArray[j]};
+	    pthread_create(&tidArray2[k], NULL, mergeArrayJob, &mArgs);
+	    pthread_join(tidArray2[k], &status);
+    
 	    j++;
 	    k++;
-	}
-	for(i = 0; i < (slots/2)-1; i++){ //join merging threads
-	    pthread_join(tidArray2[i], &status);
+	    P--;
 	}
 
 	/* this merges the last two sub arrays into the final sorted array */
 	mergeArray(threadArray[slots-2], threadArray[slots-1], size/2, finalArray);
 
 	for(i = 0; i < size; i++){ //prints final array
-	    printf("\n%d", finalArray[i]);
+	    printf("\n%d: %d",i+1, finalArray[i]);
 	}
-
+	checkIfSorted(finalArray, size);
     	//printArray(threadArray, size, t_num);
     	//checkIfSorted(randArray, size);
     //stops clock after threads have completed running

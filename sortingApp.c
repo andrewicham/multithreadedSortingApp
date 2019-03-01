@@ -14,7 +14,6 @@ void mergeArray(int* Array1, int* Array2, unsigned int arrSize, int* Array3);
 void splitArray(unsigned int size, unsigned int t_num);
 void populateArray(int* randArray, unsigned int size);
 void checkIfSorted(int* finalArray, unsigned int size);
-void *runner(void* param);
 int partition(int* Array, int low, int high);
 void quickSort(int* Array, int low, int high);
 void swap(int arr[], int a, int b);
@@ -117,11 +116,6 @@ void checkIfSorted(int* finalArray, unsigned int size){
     else{
         printf("\nArray is not sorted\n");
     }
-}
-
-void *runner(void *param){
-    int i, upper = atoi(param);  
-    pthread_exit(0);
 }
 
 struct sortingArgs{

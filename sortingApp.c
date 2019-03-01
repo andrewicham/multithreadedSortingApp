@@ -162,7 +162,7 @@ void *quickSortJob(void *pArgs)
 {
     struct dummyArgs *args = pArgs;
     quickSort(args->array, args->low, args->high);
-    pthread_exit(0);
+   
 }
 
 
@@ -170,10 +170,8 @@ void *quickSortJob(void *pArgs)
 void *mergeArrayJob(void *mArgs)
 {
     struct mergingArgs *args = mArgs;
-    printf("The merge thread starts\n");
+    
     mergeArray(args->array1, args->array2, args->arraySize, args->array3);
-    printf("The merge thread ends\n");
-    pthread_exit(0);
 }
 
 
@@ -244,7 +242,7 @@ int main(int argc, char *argv[])
     setArraySize(size);
     //initializing the array
     populateArray(randArray, size);
-    //starts the timer after the array initialization
+    //starts the timer after the arrays initialization
     splitArray(size);
     clock_t start = clock();
     /* creates an instance of dummyArgs to be passed into quickSortJob when calling pthread_create */
@@ -265,12 +263,13 @@ int main(int argc, char *argv[])
     pthread_join(tid3, &status);
 
     //stops the timer before printing the sorted array to the screen
+    
+    
+    
+    
+    	printArray(finalArray, size);
+	checkIfSorted(finalArray, size);
     clock_t stop = clock();
-    
-    printf("final thread: \n");
-    checkIfSorted(finalArray, size);
-    //printArray(finalArray, size);
-    
     printf("Elapsed time: %f seconds\n", (double)(stop - start) / CLOCKS_PER_SEC);
 
     //frees the dynamically allocated memory for randArray
